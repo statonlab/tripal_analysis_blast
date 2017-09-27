@@ -458,6 +458,14 @@ function tripal_analysis_blast_create_entity_type () {
     'name' => 'BLAST results'
   );
   $cvterm = tripal_get_cvterm($identifier);
+  if(!$cvterm->cvterm_id) {
+    $cvterm = tripal_insert_cvterm([
+      'id' => 'format:1333',
+      'name' => 'BLAST results',
+      'cv_name' => 'EDAM',
+      'definition' => 'Format of results of a sequence database search using some variant of BLAST. [ NCBI:th http://www.ebi.ac.uk/ols/ontologies/edam/terms?iri=http%3A%2F%2Fedamontology.org%2Fformat_1333 ]!',
+    ]);
+  }
   tripal_chado_add_cvterm_mapping($cvterm->cvterm_id, 'analysis', NULL);
   if (!$term or !$bundle) {
     if (!tripal_create_bundle($args, $error)) {
