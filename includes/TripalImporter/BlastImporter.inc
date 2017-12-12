@@ -36,6 +36,13 @@ class BlastImporter extends TripalImporter {
    * The title that should appear above the upload button.
    */
   public static $upload_title = 'XML File';
+
+  /**
+   * Text that should appear on the button at the bottom of the importer
+   * form.
+   */
+  public static $button_text = 'Import Blast file';
+
   /**
    * @see TripalImporter::form()
    */
@@ -72,10 +79,6 @@ class BlastImporter extends TripalImporter {
         $is_concat        = isset($form_state['input']['is_concat']) ? $form_state['input']['is_concat'] : 0;
     }
 
-    // Get the bundle for an analysis
-    $analysis_term = tripal_load_term_entity(array('vocabulary' => 'local', 'accession' => 'analysis'));
-    $analysis_bundle = tripal_load_bundle_entity(array('term_id' => $analysis_term->id));
-
     // get a list of db from chado for user to choose
     $sql = 'SELECT db_id,  name FROM {db} ORDER BY lower(name)';
     $results = chado_query($sql);
@@ -97,7 +100,7 @@ class BlastImporter extends TripalImporter {
         this information. Please set the proper regular expression values on the !settings_page
         Databases from NCBI have a built-in parser. On the Blast Settings page, simply click the box "Use Genebank style parser"',
             array(
-            '!add_database' => l('add a new database', 'admin/tripal/storage/chado/db/add', array('attributes' => array('target' => '_blank'))),
+            '!add_database' => l('add a new database', 'admin/tripal/loaders/chado_db/add', array('attributes' => array('target' => '_blank'))),
             '!settings_page' => l('Blast Settings page.', 'admin/tripal/extension/tripal_blast_analysis', array('attributes' => array('target' => '_blank')))
             )),
         '#options' => $form['db_options']['#value'],
@@ -113,14 +116,14 @@ class BlastImporter extends TripalImporter {
     $form['is_concat'] = array(
         '#title' => t('Is the XML file concatenated?'),
         '#type' => 'checkbox',
-        '#description' => t('Is the XML file a set of concatenated XML results?  Such is the case,  for instance, if <a href="http://www.blast2go.org/">Blast2GO</a> was used to generate the blast results. If
+        '#description' => t('Is the XML file a set of concatenated XML results?  Such is the case,  for instance, if <a href="https://www.blast2go.com/">Blast2GO</a> was used to generate the blast results. If
         NCBI BLAST was used with output in XML then this options should not be checked.'),
         '#default_value' => $is_concat,
     );
     $form['no_parsed'] = array(
         '#title' => t('Number of hits to be parsed'),
         '#type' => 'textfield',
-        '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10'' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
+        '#description' => t("The number of hits to be parsed. Tripal will parse only top 10 hits if you input '10' in this field. Enter the text 'all' to parse all hits. Default is to parse only the top 25 hits per match."),
         '#default_value' => '25',
     );
 
@@ -190,7 +193,6 @@ class BlastImporter extends TripalImporter {
   public function run() {
     $arguments = $this->arguments['run_args'];
     $analysis_id = $arguments['analysis_id'];
-    $db_options = $arguments['db_options'];
     $blastdb = $arguments['blastdb'];
     $blastfile = trim($this->arguments['files'][0]['file_path']);
     $blastfile_ext = trim($arguments['blastfile_ext']);
@@ -839,9 +841,12 @@ class BlastImporter extends TripalImporter {
     }
 
     // Find node id for the analysis
-    $ana_nid = db_query("SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id", array(':analysis_id' => $analysis->analysis_id))->fetchField();
-    $analysis->nid = $ana_nid;
-
+    if (module_exists('tripal_analysis')) {
+      $query = "SELECT nid FROM {chado_analysis} WHERE analysis_id = :analysis_id";
+      $args = array(':analysis_id' => $analysis->analysis_id);
+      $ana_nid = db_query()->fetchField();
+      $analysis->nid = $ana_nid;
+    }
 
     // Load the file.  This XML file should be an extract
     // of the original XML file with only a single iteration.
@@ -1091,6 +1096,9 @@ class BlastImporter extends TripalImporter {
                     // If it is, add link to that feature
                     if ($hit_feature_id) {
                       $hits_array[$hit_count]['hit_url'] = "ID$hit_feature_id";
+                    }
+                    else {
+                      $hits_array[$hit_count]['hit_url'] = NULL;
                     }
                   }
 
